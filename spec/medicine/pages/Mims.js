@@ -1,3 +1,5 @@
+const _ = require("lodash");
+
 const Page = require("./../../utils/Page");
 const Element = require("./../../utils/Element");
 
@@ -5,78 +7,67 @@ const username = "eikvkmlhytyjimxoih@awdrt.net";
 const password = "Head2tail";
 
 module.exports = class Mims extends Page {
-  isSearchResults = true;
-
   constructor(pageURL = undefined) {
-    const ele = $(".mainsearchinput.indexSearch");
+    const ele = $("#searchHome.mims-search");
     super(ele, pageURL);
   }
 
-  loginUser = () => {
+  loginUser = async () => {
     const signInButton = new SignInButton();
-    signInButton.waitUntilDisplayed();
+    await signInButton.waitUntilPresent();
     signInButton.selector.click();
     const emailField = new EmailAddress();
-    emailField.waitUntilDisplayed();
+    await emailField.waitUntilPresent();
     emailField.selector.click();
     emailField.selector.sendKeys(username);
     const passwordField = new Password();
-    passwordField.waitUntilDisplayed();
+    await passwordField.waitUntilPresent();
     passwordField.selector.click();
     passwordField.selector.sendKeys(password);
     const loginButton = new LoginButton();
-    loginButton.waitUntilDisplayed();
+    await loginButton.waitUntilPresent();
     loginButton.selector.click();
-    const mainSearchInput = new MainSearch();
-    mainSearchInput.waitUntilDisplayed();
+    await this.waitUntilPresent();
   };
 
-  clickFirstSearchResult = () => {
+  isSearchResultsPresent = () => {
     const results = new SearchResults();
-    const promise = new Promise((resolve) => {
-      results.waitUntilDisplayedWithPromise().then((isElementPresent) => {
-        if (isElementPresent) {
-          results.selector.click();
-          const moreInfoLink = new MoreInfoLink();
-          moreInfoLink
-            .waitUntilDisplayedWithPromise()
-            .then((isMoreInfoLinkPresent) => {
-              if (isMoreInfoLinkPresent) {
-                moreInfoLink.selector.click();
-                const dosageInfoLink = new DosageInfoLink();
-                dosageInfoLink
-                  .waitUntilDisplayedWithPromise()
-                  .then((isDosageLinkPresent) => {
-                    if (isDosageLinkPresent) {
-                      dosageInfoLink.selector.click();
-                      resolve(true);
-                    }
-                  });
-              }
-            });
-        } else {
-          this.isSearchResults = false;
-          resolve(false);
-        }
-      });
-    });
-    return promise;
+    return results.waitUntilPresent();
   };
 
-  getTable = () => {
-    browser.getCurrentUrl().then((url) => {
-      this.referenceURL = url;
-    });
-    const table = new Table();
-    table.waitUntilDisplayed();
-    return table.getTableData();
+  clickFirstSearchResult = async () => {
+    const results = new SearchResults();
+    results.selector.click();
+    const moreInfoLink = new MoreInfoLink();
+    const isMoreInfoLinkPresent = await moreInfoLink.waitUntilPresent();
+    if (isMoreInfoLinkPresent) {
+      moreInfoLink.selector.click();
+    }
+  };
+
+  isHeadingsPresent = () => {
+    const headings = new Headings();
+    return headings.waitUntilPresent();
+  };
+
+  getHeadings = () => {
+    const headings = new Headings();
+    return headings.getHeadings();
+  };
+
+  isContentsPresent = () => {
+    const contents = new Contents();
+    return contents.waitUntilPresent();
+  };
+
+  getContents = () => {
+    const contents = new Contents();
+    return contents.getContents();
   };
 };
 
 class SignInButton extends Element {
-  selector = element(
-    by.xpath("/html/body/div[1]/div/div[2]/div/div[2]/div[3]/div[2]/a/span")
-  );
+  selector = $("#user_id.a_signin");
 }
 
 class EmailAddress extends Element {
@@ -91,44 +82,30 @@ class LoginButton extends Element {
   selector = $("#btnSubmit");
 }
 
-class MainSearch extends Element {
-  selector = $(".mainsearchinput.indexSearch");
-}
-
 class SearchResults extends Element {
-  selector = element.all(by.css("a.mediumnormaltextblue")).first();
+  selector = $$(".search-border-style").first().$$("a").first();
 }
 
 class MoreInfoLink extends Element {
-  selector = element(
-    by.partialLinkText(
-      "prescribing information, dosage, adverse drug reactions"
-    )
-  );
+  selector = $(".monograph-header").$$("h2").$$("a").first();
 }
 
-class DosageInfoLink extends Element {
-  selector = element(by.partialLinkText("Dosage by Indications"));
+class Headings extends Element {
+  selector = $$(".monograph-content").first();
+
+  getHeadings = () => {
+    return this.selector.all(by.css(".monograph-section-header")).map((el) => {
+      return el.getText();
+    });
+  };
 }
 
-class Table extends Element {
-  selector = element(
-    by.xpath(
-      "/html/body/div[2]/div[10]/div[2]/div[1]/div[3]/div/table[2]/tbody"
-    )
-  );
+class Contents extends Element {
+  selector = $$(".monograph-content").first();
 
-  getTableData = () => {
-    let tableDivisions = this.selector.all(by.tagName("td"));
-    return tableDivisions.map((div) => {
-      let header = div.all(by.tagName("h2")).getText();
-      let value = div.all(by.css("span[itemprop]")).getText();
-      let secondaryValue = div.all(by.css("span.normaltext")).getText();
-      return {
-        header,
-        value,
-        secondaryValue,
-      };
+  getContents = () => {
+    return this.selector.all(by.css(".monograph-section-content")).map((el) => {
+      return el.getText();
     });
   };
 }

@@ -16,12 +16,11 @@ module.exports = class Page extends Element {
     this.waitUntilDisplayed();
   };
 
-  inputMedicineName = (medicine, addTabletKeyword) => {
+  inputMedicineName = (medicine) => {
     this.waitUntilDisplayed();
     this.selector.clear();
     this.selector.click();
-    if (addTabletKeyword) this.selector.sendKeys(`${medicine} tablet`);
-    else this.selector.sendKeys(medicine);
+    this.selector.sendKeys(medicine);
     this.selector.sendKeys(protractor.Key.ENTER);
   };
 

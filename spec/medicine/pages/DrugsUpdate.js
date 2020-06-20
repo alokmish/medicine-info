@@ -2,64 +2,42 @@ const Page = require("./../../utils/Page");
 const Element = require("./../../utils/Element");
 
 module.exports = class DrugsUpdate extends Page {
-  isSearchResults = true;
-
   constructor(pageURL = undefined) {
     const ele = element.all(by.css("#headerSearchField.searchTextBox")).first();
     super(ele, pageURL);
   }
 
+  isSearchResultsPresent = () => {
+    const results = new SearchResults();
+    return results.waitUntilPresent();
+  };
+
   clickFirstSearchResult = () => {
     const results = new SearchResults();
-    const promise = new Promise((resolve) => {
-      results.waitUntilDisplayedWithPromise().then((isElementPresent) => {
-        if (isElementPresent) {
-          results.click();
-          resolve(true);
-        } else {
-          this.isSearchResults = false;
-          resolve(false);
-        }
-      });
-    });
-    return promise;
+    results.click();
+  };
+
+  isTablePresent = () => {
+    const table = new Table();
+    return table.waitUntilPresent();
   };
 
   getTable = () => {
     const table = new Table();
-    const promise = new Promise((resolve, reject) => {
-      table.waitUntilDisplayedWithPromise().then((isTablePresent) => {
-        if (isTablePresent) {
-          const data = table.getTableData();
-          resolve(data);
-        } else {
-          resolve(false);
-        }
-      });
-    });
-    return promise;
+    return table.getTableData();
+  };
+
+  isDescriptionPresent = () => {
+    const descriptions = new Description();
+    return descriptions.waitUntilPresent();
   };
 
   getDescription = () => {
-    browser.getCurrentUrl().then((url) => {
-      this.referenceURL = url;
-    });
     const descriptions = new Description();
-    const promise = new Promise((resolve, reject) => {
-      descriptions
-        .waitUntilDisplayedWithPromise()
-        .then((isDescriptionPresent) => {
-          if (isDescriptionPresent) {
-            resolve({
-              one: descriptions.getDescriptionText(),
-              two: descriptions.getFullIntoText(),
-            });
-          } else {
-            resolve(false);
-          }
-        });
-    });
-    return promise;
+    return {
+      one: descriptions.getDescriptionText(),
+      two: descriptions.getFullIntoText(),
+    };
   };
 };
 

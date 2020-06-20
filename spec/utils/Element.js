@@ -33,16 +33,18 @@ module.exports = class Element {
     );
   };
 
-  waitUntilDisplayedWithPromise = () => {
+  waitUntilPresent = () => {
     this.checkSelectorExist();
     const promise = new Promise((resolve) => {
       browser
         .wait(() => this.isDisplayed(), this.waitUntilDisplayedTimeout)
         .then(
           () => {
+            // return true if element is present after timeout
             resolve(true);
           },
           () => {
+            // return false if element isn't present after timeout
             resolve(false);
           }
         );

@@ -1,22 +1,119 @@
 const fs = require("fs");
 const docx = require("docx");
+const _ = require("lodash");
 
 module.exports = class Document {
+  // document
   medicine = "";
   company = "";
+  // Practo
   practoDescription = "";
+  // Drugs Update
   drugsUpdateDescLineOne = "";
   drugsUpdateDescLineTwo = "";
+  drugsUpdateCleanTableData = [];
+  finalDrugsUpdateTableData = [];
+  // MIMS
+  mimsHeadings = [];
+  mimsContents = [];
+  // Brand Info
   brandInfoDescription = "This is a dummy brand info description.";
+  // Disease Info
   diseaseInfoData = {
     diseaseOne: "This is the description for disease one",
     diseaseTwo: "This is the description for disease two",
   };
-  drugsUpdateCleanTableData = [];
-  mimsCleanTableHeaders = [];
-  mimsCleanTableValues = [];
-  finalDrugsUpdateTableData = [];
 
+  // Create Document
+  createDocument = async () => {
+    const doc = new docx.Document();
+
+    // * Summary
+    const summaryParagraphs = this.getSummaryParagraphs();
+
+    // * Drugs Update table
+    let drugsUpdateDocTable = [];
+    // if (
+    //   this.finalDrugsUpdateTableData.length > 0
+    // )
+    //   drugsUpdateDocTable = this.getDrugsUpdateDocTable();
+
+    // * Brand Info
+    const brandInfoParagraphs = this.getBrandInfoParagraphs();
+
+    // * Disease Info
+    const diseaseInfoParagraphs = this.getDiseaseInfoParagraphs();
+
+    // * MIMS Drug Detailed Description
+    let detailedInfoParagraphs = [];
+    if (this.mimsHeadings.length > 0 && this.mimsContents.length > 0)
+      detailedInfoParagraphs = this.getDetailedInfoParagraphs();
+
+    // * Final Sections
+    const sectionParagraphs = summaryParagraphs.concat(
+      drugsUpdateDocTable,
+      brandInfoParagraphs,
+      diseaseInfoParagraphs,
+      detailedInfoParagraphs
+    );
+    doc.addSection({
+      children: sectionParagraphs,
+    });
+
+    // Write document
+    const buffer = await docx.Packer.toBuffer(doc);
+    fs.writeFileSync(`documents/${this.medicine}.docx`, buffer);
+    console.log(`Document created for ${this.medicine}`);
+  };
+
+  getSummaryParagraphs = () => {
+    // * Practo summary
+    let summaryTextRuns = [
+      new docx.TextRun({
+        text: "Brand Name: ",
+        bold: true,
+      }),
+      new docx.TextRun({
+        text: _.capitalize(this.medicine),
+      }),
+      new docx.TextRun({
+        text: "Description: ",
+        bold: true,
+      }).break(),
+      new docx.TextRun({
+        text: this.practoDescription,
+      }),
+    ];
+    // * Drugs Update summary
+    // if (
+    //   this.drugsUpdateDescLineOne !== "" &&
+    //   this.drugsUpdateDescLineTwo !== ""
+    // ) {
+    //   const drugsUpdateTextRuns = this.getDrugsUpdateTextRuns();
+    //   summaryTextRuns = summaryTextRuns.concat(drugsUpdateTextRuns);
+    // }
+    // * Disease Info summary
+    const diseaseInfoTextRuns = [
+      new docx.TextRun({
+        text: "Uses: ",
+        bold: true,
+      }).break(),
+      new docx.TextRun({
+        text: Object.keys(this.diseaseInfoData).toString(),
+      }),
+    ];
+    summaryTextRuns = summaryTextRuns.concat(diseaseInfoTextRuns);
+    return [
+      new docx.Paragraph({
+        spacing: {
+          after: 200,
+        },
+        children: summaryTextRuns,
+      }),
+    ];
+  };
+
+  // Drugs Update Methods
   cleanDrugsUpdateTableData = (rawData) => {
     let tableData = [];
     rawData.forEach((item) => {
@@ -29,32 +126,6 @@ module.exports = class Document {
     this.drugsUpdateCleanTableData = tableData;
   };
 
-  cleanMimsTableData = (rawData) => {
-    let rawTableHeaders = [];
-    let rawTableValues = [];
-    rawData.forEach((dataItem, index) => {
-      // * If array doesn't exist at index, create one
-      if (!rawTableHeaders[index]) rawTableHeaders[index] = [];
-      if (!rawTableValues[index]) rawTableValues[index] = [];
-      // * If header exists, push it
-      if (dataItem.header[0]) rawTableHeaders[index].push(dataItem.header[0]);
-      // * If value exists, push it
-      if (dataItem.value[0]) rawTableValues[index].push(dataItem.value[0]);
-      // * The first index for secondaryValue is useless
-      if (dataItem.secondaryValue[0]) {
-        if (!dataItem.value[0] && !dataItem.header[0] && index !== 0) {
-          rawTableValues[index].push(dataItem.secondaryValue[0]);
-        }
-      }
-    });
-    this.mimsCleanTableHeaders = rawTableHeaders.filter((el) => {
-      return el.length !== 0;
-    });
-    this.mimsCleanTableValues = rawTableValues.filter((el) => {
-      return el.length !== 0;
-    });
-  };
-
   parseDrugsUpdateTableData = () => {
     this.finalDrugsUpdateTableData = [];
     for (let i = 0; i < this.drugsUpdateCleanTableData[0].length; i++) {
@@ -64,80 +135,6 @@ module.exports = class Document {
       });
       this.finalDrugsUpdateTableData.push(row);
     }
-  };
-
-  createDocument = () => {
-    const doc = new docx.Document();
-    const summaryParagraphs = this.getSummaryParagraphs();
-    let drugsUpdateDocTable = [];
-    if (
-      this.drugsUpdateDescLineOne !== "" &&
-      this.drugsUpdateDescLineTwo !== "" &&
-      this.finalDrugsUpdateTableData.length > 0
-    )
-      drugsUpdateDocTable = this.getDrugsUpdateDocTable();
-    const brandInfoParagraphs = this.getBrandInfoParagraphs();
-    const diseaseInfoParagraphs = this.getDiseaseInfoParagraphs();
-    let detailedInfoParagraphs = [];
-    if (this.mimsCleanTableHeaders.length > 0)
-      detailedInfoParagraphs = this.getDetailedInfoParagraphs();
-    const sectionParagraphs = summaryParagraphs.concat(
-      drugsUpdateDocTable,
-      brandInfoParagraphs,
-      diseaseInfoParagraphs,
-      detailedInfoParagraphs
-    );
-    doc.addSection({
-      children: sectionParagraphs,
-    });
-    docx.Packer.toBuffer(doc).then((buffer) => {
-      fs.writeFileSync(`documents/${this.medicine}.docx`, buffer);
-      console.log(`Document created for ${this.medicine}`);
-    });
-  };
-
-  getSummaryParagraphs = () => {
-    let textRuns = [
-      new docx.TextRun({
-        text: "Brand Name: ",
-        bold: true,
-      }),
-      new docx.TextRun({
-        text: this.medicine,
-      }),
-      new docx.TextRun({
-        text: "Description: ",
-        bold: true,
-      }).break(),
-      new docx.TextRun({
-        text: this.practoDescription,
-      }),
-    ];
-    if (
-      this.drugsUpdateDescLineOne !== "" &&
-      this.drugsUpdateDescLineTwo !== ""
-    ) {
-      const drugsUpdateTextRuns = this.getDrugsUpdateTextRuns();
-      textRuns = textRuns.concat(drugsUpdateTextRuns);
-    }
-    const diseaseInfoTextRuns = [
-      new docx.TextRun({
-        text: "Uses: ",
-        bold: true,
-      }).break(),
-      new docx.TextRun({
-        text: Object.keys(this.diseaseInfoData).toString(),
-      }),
-    ];
-    textRuns = textRuns.concat(diseaseInfoTextRuns);
-    return [
-      new docx.Paragraph({
-        spacing: {
-          after: 200,
-        },
-        children: textRuns,
-      }),
-    ];
   };
 
   getDrugsUpdateTextRuns = () => {
@@ -292,47 +289,32 @@ module.exports = class Document {
   };
 
   getDetailedInfoParagraphs = () => {
-    let paragraphs = [];
-    for (let i = 0; i < this.mimsCleanTableHeaders.length; i++) {
-      paragraphs.push(
+    let mimsDetailParagraphs = [];
+    for (let i = 0; i < this.mimsHeadings.length; i++) {
+      mimsDetailParagraphs.push(
         new docx.Paragraph({
           spacing: {
             after: 200,
           },
           children: [
             new docx.TextRun({
-              text: this.mimsCleanTableHeaders[i][0],
+              text: this.mimsHeadings[i],
               bold: true,
             }),
           ],
-        })
-      );
-      const splitValues = this.mimsCleanTableValues[i][0].split("\n");
-      let textRunArray = [];
-      splitValues.forEach((value, index) => {
-        if (index === 0) {
-          textRunArray.push(
-            new docx.TextRun({
-              text: value,
-            })
-          );
-        } else {
-          textRunArray.push(
-            new docx.TextRun({
-              text: value,
-            }).break()
-          );
-        }
-      });
-      paragraphs.push(
+        }),
         new docx.Paragraph({
           spacing: {
             after: 200,
           },
-          children: textRunArray,
+          children: [
+            new docx.TextRun({
+              text: this.mimsContents[i],
+            }),
+          ],
         })
       );
     }
-    return paragraphs;
+    return mimsDetailParagraphs;
   };
 };
