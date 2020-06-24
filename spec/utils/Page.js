@@ -13,7 +13,10 @@ module.exports = class Page extends Element {
     this.checkPageURLExists();
     browser.manage().window().maximize();
     browser.get(this.pageURL);
-    this.waitUntilDisplayed();
+  };
+
+  isPageLoaded = () => {
+    return this.waitUntilPresent();
   };
 
   inputMedicineName = (medicine) => {

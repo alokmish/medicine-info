@@ -2,6 +2,7 @@ const _ = require("lodash");
 
 const Page = require("./../../utils/Page");
 const Element = require("./../../utils/Element");
+const { element } = require("protractor");
 
 const username = "eikvkmlhytyjimxoih@awdrt.net";
 const password = "Head2tail";
@@ -42,6 +43,15 @@ module.exports = class Mims extends Page {
     const isMoreInfoLinkPresent = await moreInfoLink.waitUntilPresent();
     if (isMoreInfoLinkPresent) {
       moreInfoLink.selector.click();
+      const fullPrescribingInfoLink = new FullPrescribingInfoLink();
+      const isFullPrescribingInfoLinkPresent = await fullPrescribingInfoLink.waitUntilPresent();
+      // console.log(
+      //   "isFullPrescribingInfoLinkPresent",
+      //   isFullPrescribingInfoLinkPresent
+      // );
+      if (isFullPrescribingInfoLinkPresent) {
+        fullPrescribingInfoLink.clickFullPrescribingInfoLink();
+      }
     }
   };
 
@@ -88,6 +98,18 @@ class SearchResults extends Element {
 
 class MoreInfoLink extends Element {
   selector = $(".monograph-header").$$("h2").$$("a").first();
+}
+
+class FullPrescribingInfoLink extends Element {
+  selector = $(".list-group.panel");
+
+  clickFullPrescribingInfoLink = () => {
+    this.selector.all(by.id("FullPrescribingInfo")).click();
+  };
+  // selector = element
+  //   .all(by.tagName("a"))
+  //   // .all(by.id("FullPrescribingInfo"))
+  //   .first();
 }
 
 class Headings extends Element {

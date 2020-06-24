@@ -2,118 +2,51 @@ const fs = require("fs");
 const docx = require("docx");
 const _ = require("lodash");
 
+const Constants = require("./../utils/Constants");
+
 module.exports = class Document {
-  // document
+  // Document
   medicine = "";
   company = "";
   // Practo
+  practoContainsText = "";
   practoDescription = "";
+  practoDocData = {
+    isDataReady: false,
+    containsText: "",
+    brandInfoText: "",
+    drugUsesText: "",
+  };
   // Drugs Update
   drugsUpdateDescLineOne = "";
   drugsUpdateDescLineTwo = "";
   drugsUpdateCleanTableData = [];
   finalDrugsUpdateTableData = [];
+  drugsUpdateDocData = {
+    isDataReady: false,
+    drugTypes: [],
+    brandInfoText: "",
+  };
   // MIMS
   mimsHeadings = [];
   mimsContents = [];
+  mimsDocData = {
+    isDataReady: false,
+    categoryText: "",
+  };
   // Brand Info
-  brandInfoDescription = "This is a dummy brand info description.";
+  brandInfoDescription = "";
   // Disease Info
-  diseaseInfoData = {
-    diseaseOne: "This is the description for disease one",
-    diseaseTwo: "This is the description for disease two",
+  drugUses = [];
+  informedHealthHeadings = [];
+  informedHealthContents = [];
+  informedHealthDocData = {
+    isDataReady: false,
+    diseaseInfo: {},
   };
+  // Reference URL
+  referenceUrls = [];
 
-  // Create Document
-  createDocument = async () => {
-    const doc = new docx.Document();
-
-    // * Summary
-    const summaryParagraphs = this.getSummaryParagraphs();
-
-    // * Drugs Update table
-    let drugsUpdateDocTable = [];
-    // if (
-    //   this.finalDrugsUpdateTableData.length > 0
-    // )
-    //   drugsUpdateDocTable = this.getDrugsUpdateDocTable();
-
-    // * Brand Info
-    const brandInfoParagraphs = this.getBrandInfoParagraphs();
-
-    // * Disease Info
-    const diseaseInfoParagraphs = this.getDiseaseInfoParagraphs();
-
-    // * MIMS Drug Detailed Description
-    let detailedInfoParagraphs = [];
-    if (this.mimsHeadings.length > 0 && this.mimsContents.length > 0)
-      detailedInfoParagraphs = this.getDetailedInfoParagraphs();
-
-    // * Final Sections
-    const sectionParagraphs = summaryParagraphs.concat(
-      drugsUpdateDocTable,
-      brandInfoParagraphs,
-      diseaseInfoParagraphs,
-      detailedInfoParagraphs
-    );
-    doc.addSection({
-      children: sectionParagraphs,
-    });
-
-    // Write document
-    const buffer = await docx.Packer.toBuffer(doc);
-    fs.writeFileSync(`documents/${this.medicine}.docx`, buffer);
-    console.log(`Document created for ${this.medicine}`);
-  };
-
-  getSummaryParagraphs = () => {
-    // * Practo summary
-    let summaryTextRuns = [
-      new docx.TextRun({
-        text: "Brand Name: ",
-        bold: true,
-      }),
-      new docx.TextRun({
-        text: _.capitalize(this.medicine),
-      }),
-      new docx.TextRun({
-        text: "Description: ",
-        bold: true,
-      }).break(),
-      new docx.TextRun({
-        text: this.practoDescription,
-      }),
-    ];
-    // * Drugs Update summary
-    // if (
-    //   this.drugsUpdateDescLineOne !== "" &&
-    //   this.drugsUpdateDescLineTwo !== ""
-    // ) {
-    //   const drugsUpdateTextRuns = this.getDrugsUpdateTextRuns();
-    //   summaryTextRuns = summaryTextRuns.concat(drugsUpdateTextRuns);
-    // }
-    // * Disease Info summary
-    const diseaseInfoTextRuns = [
-      new docx.TextRun({
-        text: "Uses: ",
-        bold: true,
-      }).break(),
-      new docx.TextRun({
-        text: Object.keys(this.diseaseInfoData).toString(),
-      }),
-    ];
-    summaryTextRuns = summaryTextRuns.concat(diseaseInfoTextRuns);
-    return [
-      new docx.Paragraph({
-        spacing: {
-          after: 200,
-        },
-        children: summaryTextRuns,
-      }),
-    ];
-  };
-
-  // Drugs Update Methods
   cleanDrugsUpdateTableData = (rawData) => {
     let tableData = [];
     rawData.forEach((item) => {
@@ -137,94 +70,263 @@ module.exports = class Document {
     }
   };
 
-  getDrugsUpdateTextRuns = () => {
-    return [
-      new docx.TextRun({
-        text: "Contains: ",
-        bold: true,
-      }).break(),
-      new docx.TextRun({
-        text: this.drugsUpdateDescLineOne,
-      }),
-      new docx.TextRun({
-        text: "Category: ",
-        bold: true,
-      }).break(),
-      new docx.TextRun({
-        text: this.drugsUpdateDescLineTwo,
-      }),
-    ];
+  getDrugTypes = () => {
+    const drugTypes = [];
+    for (let j = 1; j < this.finalDrugsUpdateTableData.length; j++) {
+      const cleanDrugTypeValue = this.finalDrugsUpdateTableData[j][2]
+        .toLowerCase()
+        .replace(`${this.medicine} `, "");
+      if (cleanDrugTypeValue.includes("tab")) {
+        drugTypes.push("Tablet");
+      } else if (cleanDrugTypeValue.includes("syr")) {
+        drugTypes.push("Syrup");
+      } else if (Constants.drugTypeMapping[cleanDrugTypeValue]) {
+        drugTypes.push(Constants.drugTypeMapping[cleanDrugTypeValue]);
+      } else {
+        drugTypes.push(cleanDrugTypeValue);
+      }
+    }
+    return _.uniq(drugTypes);
   };
 
-  getDrugsUpdateDocTable = () => {
-    let rows = [];
-    for (let j = 0; j < this.finalDrugsUpdateTableData.length; j++) {
-      rows.push(
-        new docx.TableRow({
-          children: [
-            new docx.TableCell({
-              width: {
-                type: docx.WidthType.AUTO,
-              },
-              children: [
-                new docx.Paragraph({
-                  text: this.finalDrugsUpdateTableData[j][0],
-                  heading: j === 0 ? docx.HeadingLevel.HEADING_4 : undefined,
-                }),
-              ],
-              verticalAlign: docx.VerticalAlign.CENTER,
-            }),
-            new docx.TableCell({
-              width: {
-                type: docx.WidthType.AUTO,
-              },
-              children: [
-                new docx.Paragraph({
-                  text: this.finalDrugsUpdateTableData[j][1],
-                  heading: j === 0 ? docx.HeadingLevel.HEADING_4 : undefined,
-                }),
-              ],
-              verticalAlign: docx.VerticalAlign.CENTER,
-            }),
-            new docx.TableCell({
-              width: {
-                type: docx.WidthType.AUTO,
-              },
-              children: [
-                new docx.Paragraph({
-                  text: this.finalDrugsUpdateTableData[j][2],
-                  heading: j === 0 ? docx.HeadingLevel.HEADING_4 : undefined,
-                }),
-              ],
-              verticalAlign: docx.VerticalAlign.CENTER,
-            }),
-            new docx.TableCell({
-              width: {
-                type: docx.WidthType.AUTO,
-              },
-              children: [
-                new docx.Paragraph({
-                  text: this.finalDrugsUpdateTableData[j][3],
-                  heading: j === 0 ? docx.HeadingLevel.HEADING_4 : undefined,
-                }),
-              ],
-              verticalAlign: docx.VerticalAlign.CENTER,
-            }),
-          ],
-        })
+  // * Drugs Update data processing
+  processDrugsUpdateData = () => {
+    const drugTypes = this.getDrugTypes();
+    this.drugsUpdateDocData.drugTypes = drugTypes
+      .toString()
+      .replace(/,/g, ", ");
+    this.drugsUpdateDocData.brandInfoText = `${this.drugsUpdateDescLineOne} ${this.drugsUpdateDescLineTwo}`;
+    this.drugsUpdateDocData.isDataReady = true;
+  };
+
+  // * MIMS data processing
+  processMimsData = () => {
+    const index = this.mimsHeadings.indexOf("CIMS Class");
+    this.mimsDocData.categoryText = this.mimsContents[index];
+    this.mimsDocData.isDataReady = true;
+  };
+
+  // * Practo data processing
+  processPractoData = () => {
+    this.practoDocData.containsText = this.practoContainsText
+      .replace(/ *\([^)]*\) */g, "")
+      .replace(/\+/g, ",");
+    this.practoDocData.brandInfoText = this.practoDescription;
+    this.practoDocData.drugUsesText = this.drugUses
+      .toString()
+      .replace(/,/g, ", ");
+    this.practoDocData.isDataReady = true;
+  };
+
+  // * InformedHealth data processing
+  processInformedHealthData = () => {
+    if (
+      this.drugUses[0] &&
+      this.informedHealthHeadings[0] &&
+      this.informedHealthHeadings[0][0]
+    ) {
+      this.informedHealthDocData.diseaseInfo[this.drugUses[0]] = [];
+      this.informedHealthDocData.diseaseInfo[this.drugUses[0]].push(
+        this.informedHealthContents[0][0],
+        this.informedHealthContents[0][1]
       );
     }
+    if (
+      this.drugUses[1] &&
+      this.informedHealthHeadings[1] &&
+      this.informedHealthHeadings[1][0]
+    ) {
+      this.informedHealthDocData.diseaseInfo[this.drugUses[1]] = [];
+      this.informedHealthDocData.diseaseInfo[this.drugUses[1]].push(
+        this.informedHealthContents[1][0],
+        this.informedHealthContents[1][1]
+      );
+    }
+    if (
+      this.drugUses[2] &&
+      this.informedHealthHeadings[2] &&
+      this.informedHealthHeadings[2][0]
+    ) {
+      this.informedHealthDocData.diseaseInfo[this.drugUses[2]] = [];
+      this.informedHealthDocData.diseaseInfo[this.drugUses[2]].push(
+        this.informedHealthContents[2][0],
+        this.informedHealthContents[2][1]
+      );
+    }
+    if (_.keys(this.informedHealthDocData.diseaseInfo).length > 0)
+      this.informedHealthDocData.isDataReady = true;
+  };
+
+  // * Create Document
+  createDocument = async () => {
+    const doc = new docx.Document({
+      creator: "Anjali Mishra",
+      title: this.medicine,
+      description: `This is a document about the drug, ${this.medicine}`,
+    });
+
+    // * Summary
+    // console.log("Getting summary");
+    const summaryParagraphs = this.getSummaryParagraphs();
+
+    // * Brand Info
+    // console.log("Getting brand info");
+    const brandInfoParagraphs = this.getBrandInfoParagraphs();
+
+    // * Disease Info
+    // console.log("Getting disease info");
+    const diseaseInfoParagraphs = this.getDiseaseInfoParagraphs();
+
+    // * Drug Detailed Info
+    // console.log("Getting mims details");
+    let detailedInfoParagraphs = [];
+    if (this.mimsHeadings.length > 0 && this.mimsContents.length > 0)
+      detailedInfoParagraphs = this.getDetailedInfoParagraphs();
+
+    // * Reference URLs
+    let referencesInfoParagraphs = [];
+    if (this.referenceUrls.length > 0)
+      referencesInfoParagraphs = this.getReferencesInfoParagraphs();
+
+    // * Final Sections
+    const documentParagraphs = summaryParagraphs.concat(
+      brandInfoParagraphs,
+      diseaseInfoParagraphs,
+      detailedInfoParagraphs,
+      referencesInfoParagraphs
+    );
+    doc.addSection({
+      children: documentParagraphs,
+    });
+
+    // * Write document
+    const buffer = await docx.Packer.toBuffer(doc);
+    fs.writeFileSync(`documents/${this.medicine}.docx`, buffer);
+    console.log(`Document created for ${this.medicine}`);
+  };
+
+  getTextValueToUse = (textValue, isDataReady, emptyValueToUse) => {
+    if (!isDataReady) return emptyValueToUse;
+    return textValue ? textValue : emptyValueToUse;
+  };
+
+  getSummaryParagraphs = () => {
     return [
       new docx.Paragraph({
+        spacing: {
+          after: 200,
+        },
         children: [
           new docx.TextRun({
-            text: "Dosage: ",
+            text: "Name of Brand: ",
+            font: "Calibri",
+            color: "7F7F80",
+            size: 24,
             bold: true,
+          }),
+          new docx.TextRun({
+            text: _.capitalize(this.medicine),
+            font: "Calibri",
+            color: "7F7F80",
+            size: 20,
           }),
         ],
       }),
-      new docx.Table({
-        rows,
+      new docx.Paragraph({
+        spacing: {
+          after: 200,
+        },
+        children: [
+          new docx.TextRun({
+            text: "Dosage: ",
+            font: "Calibri",
+            color: "7F7F80",
+            size: 24,
+            bold: true,
+          }),
+          new docx.TextRun({
+            text: this.getTextValueToUse(
+              this.drugsUpdateDocData.drugTypes,
+              this.drugsUpdateDocData.isDataReady,
+              "----"
+            ),
+            font: "Calibri",
+            color: "7F7F80",
+            size: 20,
+          }),
+        ],
+      }),
+      new docx.Paragraph({
+        spacing: {
+          after: 200,
+        },
+        children: [
+          new docx.TextRun({
+            text: "Contains: ",
+            bold: true,
+            font: "Calibri",
+            color: "7F7F80",
+            size: 24,
+          }),
+          new docx.TextRun({
+            text: this.getTextValueToUse(
+              this.practoDocData.containsText,
+              this.practoDocData.isDataReady,
+              "----"
+            ),
+            font: "Calibri",
+            color: "7F7F80",
+            size: 20,
+          }),
+        ],
+      }),
+      new docx.Paragraph({
+        spacing: {
+          after: 200,
+        },
+        children: [
+          new docx.TextRun({
+            text: "Category: ",
+            bold: true,
+            font: "Calibri",
+            color: "7F7F80",
+            size: 24,
+          }),
+          new docx.TextRun({
+            text: this.getTextValueToUse(
+              this.mimsDocData.categoryText,
+              this.mimsDocData.isDataReady,
+              "----"
+            ),
+            font: "Calibri",
+            color: "7F7F80",
+            size: 20,
+          }),
+        ],
+      }),
+      new docx.Paragraph({
+        spacing: {
+          after: 200,
+        },
+        children: [
+          new docx.TextRun({
+            text: "Uses: ",
+            bold: true,
+            font: "Calibri",
+            color: "7F7F80",
+            size: 24,
+          }),
+          new docx.TextRun({
+            text: this.getTextValueToUse(
+              this.practoDocData.drugUsesText,
+              this.practoDocData.isDataReady,
+              "----"
+            ),
+            font: "Calibri",
+            color: "7F7F80",
+            size: 20,
+          }),
+        ],
       }),
     ];
   };
@@ -234,12 +336,14 @@ module.exports = class Document {
       new docx.Paragraph({
         spacing: {
           after: 200,
-          before: 200,
         },
         children: [
           new docx.TextRun({
             text: "Brand Info",
             bold: true,
+            font: "Calibri",
+            color: "7F7F80",
+            size: 24,
           }),
         ],
       }),
@@ -249,57 +353,58 @@ module.exports = class Document {
         },
         children: [
           new docx.TextRun({
-            text: this.brandInfoDescription,
-          }),
+            text: this.getTextValueToUse(
+              this.practoDocData.brandInfoText,
+              this.practoDocData.isDataReady,
+              ""
+            ),
+            font: "Calibri",
+            color: "7F7F80",
+            size: 20,
+          }).break(),
+          new docx.TextRun({
+            text: this.getTextValueToUse(
+              this.drugsUpdateDocData.brandInfoText,
+              this.drugsUpdateDocData.isDataReady,
+              ""
+            ),
+            font: "Calibri",
+            color: "7F7F80",
+            size: 20,
+          }).break(),
+          new docx.TextRun({
+            text: this.getTextValueToUse(
+              this.brandInfoDescription,
+              true,
+              "----"
+            ),
+            font: "Calibri",
+            color: "7F7F80",
+            size: 20,
+          }).break(),
         ],
       }),
     ];
   };
 
   getDiseaseInfoParagraphs = () => {
-    let paragraphs = [];
-    for (let disease in this.diseaseInfoData) {
-      if (this.diseaseInfoData.hasOwnProperty(disease)) {
-        paragraphs.push(
-          new docx.Paragraph({
-            spacing: {
-              after: 200,
-            },
-            children: [
-              new docx.TextRun({
-                text: disease,
-                bold: true,
-              }),
-            ],
-          }),
-          new docx.Paragraph({
-            spacing: {
-              after: 200,
-            },
-            children: [
-              new docx.TextRun({
-                text: this.diseaseInfoData[disease],
-              }),
-            ],
-          })
-        );
-      }
-    }
-    return paragraphs;
-  };
-
-  getDetailedInfoParagraphs = () => {
-    let mimsDetailParagraphs = [];
-    for (let i = 0; i < this.mimsHeadings.length; i++) {
-      mimsDetailParagraphs.push(
+    // Return if data is not available
+    if (!this.informedHealthDocData.isDataReady) return [];
+    // Process paragraphs and return them
+    const diseaseInfoParagraphs = [];
+    _.keys(this.informedHealthDocData.diseaseInfo).forEach((disease) => {
+      diseaseInfoParagraphs.push(
         new docx.Paragraph({
           spacing: {
             after: 200,
           },
           children: [
             new docx.TextRun({
-              text: this.mimsHeadings[i],
+              text: "Disease Info",
               bold: true,
+              font: "Calibri",
+              color: "7F7F80",
+              size: 24,
             }),
           ],
         }),
@@ -309,12 +414,157 @@ module.exports = class Document {
           },
           children: [
             new docx.TextRun({
-              text: this.mimsContents[i],
+              text: disease,
+              bold: true,
+              font: "Calibri",
+              color: "7F7F80",
+              size: 24,
+            }),
+          ],
+        }),
+        new docx.Paragraph({
+          spacing: {
+            after: 200,
+          },
+          children: [
+            new docx.TextRun({
+              text: this.informedHealthDocData.diseaseInfo[disease][0],
+              font: "Calibri",
+              color: "7F7F80",
+              size: 20,
+            }),
+          ],
+        }),
+        new docx.Paragraph({
+          spacing: {
+            after: 200,
+          },
+          children: [
+            new docx.TextRun({
+              text: this.informedHealthDocData.diseaseInfo[disease][1],
+              font: "Calibri",
+              color: "7F7F80",
+              size: 20,
+            }),
+          ],
+        })
+      );
+    });
+    return diseaseInfoParagraphs;
+  };
+
+  getDetailedInfoParagraphs = () => {
+    let detailedInfoParagraphs = [];
+    for (let i = 0; i < Constants.mimsOrderedHeadings.length; i++) {
+      const index = this.mimsHeadings.indexOf(Constants.mimsOrderedHeadings[i]);
+      if (index !== -1) {
+        detailedInfoParagraphs.push(
+          new docx.Paragraph({
+            spacing: {
+              after: 200,
+            },
+            children: [
+              new docx.TextRun({
+                text: Constants.mimsOrderedHeadings[i],
+                bold: true,
+                font: "Calibri",
+                color: "7F7F80",
+                size: 24,
+              }),
+            ],
+          })
+        );
+        const textRunArray = [];
+        const splitValues = this.mimsContents[index].split("\n");
+        splitValues.forEach((textVal) => {
+          textRunArray.push(
+            new docx.TextRun({
+              text: textVal,
+              font: "Calibri",
+              color: "7F7F80",
+              size: 20,
+            }).break()
+          );
+        });
+        detailedInfoParagraphs.push(
+          new docx.Paragraph({
+            spacing: {
+              after: 200,
+            },
+            children: textRunArray,
+          })
+        );
+      } else {
+        detailedInfoParagraphs.push(
+          new docx.Paragraph({
+            spacing: {
+              after: 200,
+            },
+            children: [
+              new docx.TextRun({
+                text: Constants.mimsOrderedHeadings[i],
+                bold: true,
+                font: "Calibri",
+                color: "7F7F80",
+                size: 24,
+              }),
+            ],
+          }),
+          new docx.Paragraph({
+            spacing: {
+              after: 200,
+            },
+            children: [
+              new docx.TextRun({
+                text: "----",
+                font: "Calibri",
+                color: "7F7F80",
+                size: 20,
+              }),
+            ],
+          })
+        );
+      }
+    }
+
+    for (let i = 0; i < this.mimsHeadings.length; i++) {}
+    return detailedInfoParagraphs;
+  };
+
+  getReferencesInfoParagraphs = () => {
+    let referencesInfoParagraphs = [
+      new docx.Paragraph({
+        spacing: {
+          after: 200,
+        },
+        children: [
+          new docx.TextRun({
+            text: "References",
+            bold: true,
+            font: "Calibri",
+            color: "7F7F80",
+            size: 24,
+          }),
+        ],
+      }),
+    ];
+    for (let i = 0; i < this.referenceUrls.length; i++) {
+      referencesInfoParagraphs.push(
+        new docx.Paragraph({
+          spacing: {
+            after: 200,
+          },
+          children: [
+            new docx.TextRun({
+              text: this.referenceUrls[i],
+              font: "Calibri",
+              color: "7F7F80",
+              size: 20,
             }),
           ],
         })
       );
     }
-    return mimsDetailParagraphs;
+    return referencesInfoParagraphs;
   };
 };

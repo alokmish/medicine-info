@@ -32,8 +32,38 @@ module.exports = class Practo extends Page {
 
   getDescription = () => {
     const descriptions = new Description();
-    descriptions.waitUntilDisplayed();
     return descriptions.getDescriptionText();
+  };
+
+  isDrugContainsPresent = () => {
+    const drugContainsSpan = new DrugContainsSpan();
+    const drugContainsAnchor = new DrugContainsAnchor();
+    return (
+      drugContainsSpan.waitUntilPresent() ||
+      drugContainsAnchor.waitUntilPresent()
+    );
+  };
+
+  getDrugContains = async () => {
+    const drugContainsSpan = new DrugContainsSpan();
+    const drugContainsAnchor = new DrugContainsAnchor();
+    let spanText = "";
+    let anchorText = "";
+    if (await drugContainsSpan.waitUntilPresent())
+      spanText = await drugContainsSpan.getContainsSpanText();
+    if (await drugContainsAnchor.waitUntilPresent())
+      anchorText = await drugContainsAnchor.getContainsAnchorText();
+    return spanText + anchorText;
+  };
+
+  isDrugUsesPresent = () => {
+    const drugUses = new DrugUses();
+    return drugUses.waitUntilPresent();
+  };
+
+  getDrugUses = () => {
+    const drugUses = new DrugUses();
+    return drugUses.getDrugUsesText();
   };
 };
 
@@ -59,6 +89,29 @@ class Description extends Element {
   };
 }
 
+class DrugContainsSpan extends Element {
+  selector = element.all(by.css("span.u-m-r--10.u-text--no-decoration")).last();
+
+  getContainsSpanText = () => {
+    return this.selector.getText();
+  };
+}
+
+class DrugContainsAnchor extends Element {
+  selector = element.all(by.css("a.u-m-r--10.u-text--no-decoration")).first();
+
+  getContainsAnchorText = () => {
+    return this.selector.getText();
+  };
+}
+
 class DrugUses extends Element {
-  selector = $("#usage");
+  selector = element(by.id("usage"));
+
+  getDrugUsesText = () => {
+    const usesEle = this.selector.all(by.css(".list__without-image-content"));
+    return usesEle.map((el) => {
+      return el.getText();
+    });
+  };
 }
