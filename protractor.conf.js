@@ -8,6 +8,7 @@ exports.config = {
   jasmineNodeOpts: {
     print: () => {},
   },
+  SELENIUM_PROMISE_MANAGER: false,
   onPrepare: () => {
     browser.ignoreSynchronization = true;
 

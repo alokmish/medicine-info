@@ -1,3 +1,4 @@
+// imports
 const using = require("jasmine-data-provider");
 
 const FileReader = require("./../utils/FileReader");
@@ -5,15 +6,20 @@ const Constants = require("./../utils/Constants");
 const Practo = require("./pages/Practo");
 const DrugsUpdate = require("./pages/DrugsUpdate");
 const Mims = require("./pages/Mims");
+const InformedHealth = require("./pages/InformedHealth");
 const Document = require("./../utils/Document");
+const Wikipedia = require("./pages/Wikipedia");
 
+// initialization
 const fileReader = new FileReader();
 const practo = new Practo(Constants.practoPageURL);
 const drugsUpdate = new DrugsUpdate(Constants.drugsUpdatePageURL);
 const mims = new Mims(Constants.mimsPageURL);
-let document = null;
+const informedHealth = new InformedHealth(Constants.informedHealthPageURL);
+const wikipedia = new Wikipedia(Constants.wikipediaPageURL);
 let isMimsLoggedIn = false;
 
+// automation
 describe("medicine information", () => {
   beforeEach(function () {
     originalTimeout = jasmine.DEFAULT_TIMEOUT_INTERVAL;
@@ -26,130 +32,266 @@ describe("medicine information", () => {
   // });
 
   using(fileReader.loadCSV("medicines.csv"), function (drug) {
-    it(`should create a document for ${drug}`, () => {
-      start(drug);
-    });
-  });
-});
+    it(`should create a document for ${drug}`, async () => {
+      // * set up the document
+      const document = new Document();
+      const index = fileReader.medicines.indexOf(drug);
+      document.company = fileReader.companies[index];
+      document.medicine = drug;
 
-function start(drug) {
-  document = null;
-  initializeNewDocument(drug);
-  if (document.medicine) getInfoFromPracto();
-}
+      // * return if medicine or company is not defined
+      if (!document.medicine) return;
 
-function initializeNewDocument(drug) {
-  document = new Document();
-  const index = fileReader.medicines.indexOf(drug);
-  document.company = fileReader.companies[index];
-  document.medicine = drug;
-}
-
-function getInfoFromPracto() {
-  // * Practo
-  practo.goToPage();
-  practo.inputMedicineName(document.medicine, true);
-  practo.clickFirstSearchResult().then((isSearchResults) => {
-    if (isSearchResults) {
-      practo.getDescription().then((desc) => {
-        document.practoDescription = desc;
-        // console.log("document.practoDescription", document.practoDescription);
-
-        getInfoFromDrugUpdate();
-      });
-    } else {
-      getInfoFromDrugUpdate();
-    }
-  });
-}
-
-function getInfoFromDrugUpdate() {
-  // * Drugs Update
-  drugsUpdate.goToPage();
-  drugsUpdate.inputMedicineName(document.medicine);
-  drugsUpdate.clickFirstSearchResult().then((isSearchResults) => {
-    if (isSearchResults) {
-      drugsUpdate.getTable().then((data) => {
-        if (data && data.then) {
-          data.then((values) => {
-            document.cleanDrugsUpdateTableData(values);
+      // * get medicine information from Drugs Update
+      drugsUpdate.goToPage();
+      const isDrugsInfoLoaded = await drugsUpdate.isPageLoaded();
+      if (isDrugsInfoLoaded) {
+        drugsUpdate.inputMedicineName(document.medicine);
+        const isDrugsUpdateSearchResultsPresent = await drugsUpdate.isSearchResultsPresent();
+        if (isDrugsUpdateSearchResultsPresent) {
+          drugsUpdate.clickFirstSearchResult();
+          const isDrugsUpdateTablePresent = await drugsUpdate.isTablePresent();
+          if (isDrugsUpdateTablePresent) {
+            const tableData = await drugsUpdate.getTable();
+            document.cleanDrugsUpdateTableData(tableData);
             document.parseDrugsUpdateTableData();
             // console.log(
             //   "document.finalDrugsUpdateTableData",
             //   document.finalDrugsUpdateTableData
             // );
-          });
-          getInfoFromMims();
-        } else if (data) {
-          document.cleanDrugsUpdateTableData(data);
-          document.parseDrugsUpdateTableData();
-          getInfoFromMims();
-        } else {
-          getInfoFromMims();
-        }
-      });
-      drugsUpdate.getDescription().then((data) => {
-        if (data && data.one.then) {
-          data.one.then((desc) => {
-            document.drugsUpdateDescLineOne = desc;
+          }
+          const isDrugsUpdateDescriptionPresent = await drugsUpdate.isDescriptionPresent();
+          if (isDrugsUpdateDescriptionPresent) {
+            const descriptionData = drugsUpdate.getDescription();
+            document.drugsUpdateDescLineOne = await descriptionData.one;
+            document.drugsUpdateDescLineTwo = await descriptionData.two;
             // console.log(
             //   "document.drugsUpdateDescLineOne",
             //   document.drugsUpdateDescLineOne
             // );
-          });
-        }
-        if (data && data.two.then) {
-          data.two.then((desc) => {
-            document.drugsUpdateDescLineTwo = desc;
             // console.log(
             //   "document.drugsUpdateDescLineTwo",
             //   document.drugsUpdateDescLineTwo
             // );
-          });
+            document.processDrugsUpdateData();
+          }
+          const drugsUpdateReferenceUrl = await browser.getCurrentUrl();
+          document.referenceUrls.push(drugsUpdateReferenceUrl);
         }
-        if (data && !data.one.then) {
-          document.drugsUpdateDescLineOne = data.one;
-        }
-        if (data && !data.two.then) {
-          document.drugsUpdateDescLineTwo = data.two;
-        }
-      });
-    } else {
-      getInfoFromMims();
-    }
-  });
-}
+      }
 
-function getInfoFromMims() {
-  // * Mims
-  mims.goToPage();
-  if (!isMimsLoggedIn) {
-    mims.loginUser();
-    isMimsLoggedIn = true;
-  }
-  mims.inputMedicineName(document.medicine);
-  mims.clickFirstSearchResult().then((isSearchResults) => {
-    if (isSearchResults) {
-      const mimsTableData = mims.getTable();
-      mimsTableData.then((data) => {
-        document.cleanMimsTableData(data);
-        // console.log(
-        //   "document.mimsCleanTableHeaders",
-        //   document.mimsCleanTableHeaders
-        // );
-        // console.log(
-        //   "document.mimsCleanTableValues",
-        //   document.mimsCleanTableValues
-        // );
+      // * get medicine information from MIMS
+      mims.goToPage();
+      if (!isMimsLoggedIn) {
+        await mims.loginUser();
+        isMimsLoggedIn = true;
+      }
+      const isMimsLoaded = await mims.isPageLoaded();
+      if (isMimsLoaded) {
+        mims.inputMedicineName(document.medicine);
+        const isMimsSearchResultsPresent = await mims.isSearchResultsPresent();
+        // console.log("isMimsSearchResultsPresent", isMimsSearchResultsPresent);
+        if (isMimsSearchResultsPresent) {
+          await mims.clickFirstSearchResult();
+          const isHeadingsPresent = await mims.isHeadingsPresent();
+          // console.log("isHeadingsPresent", isHeadingsPresent);
+          if (isHeadingsPresent) {
+            document.mimsHeadings = await mims.getHeadings();
+            // console.log("document.mimsHeadings", document.mimsHeadings);
+          }
+          const isContentsPresent = await mims.isContentsPresent();
+          // console.log("isContentsPresent", isContentsPresent);
+          if (isContentsPresent) {
+            document.mimsContents = await mims.getContents();
+            // console.log("document.mimsContents", document.mimsContents);
+            document.processMimsData();
+          }
+          const mimsReferenceUrl = await browser.getCurrentUrl();
+          document.referenceUrls.push(mimsReferenceUrl);
+        }
+      }
 
-        // * Create document once everything is ready
-        document.createDocument();
-        browser.sleep(2000);
-      });
-    } else {
-      // * Create document once everything is ready
-      document.createDocument();
-      browser.sleep(2000);
-    }
+      // * get medicine information from Practo
+      practo.goToPage();
+      const isPractoLoaded = await practo.isPageLoaded();
+      if (isPractoLoaded) {
+        practo.inputMedicineName(document.medicine);
+        const isPractoSearchResultsPresent = await practo.isSearchResultsPresent();
+        // console.log("isPractoSearchResultsPresent", isPractoSearchResultsPresent);
+        if (isPractoSearchResultsPresent) {
+          const isPractoFirstSearchResultPresent = await practo.isFirstSearchResultPresent();
+          // console.log("isPractoFirstSearchResultPresent", isPractoFirstSearchResultPresent);
+          if (isPractoFirstSearchResultPresent) {
+            practo.clickFirstSearchResult();
+            const isPractoDescriptionPresent = await practo.isDescriptionPresent();
+            // console.log("isPractoDescriptionPresent", isPractoDescriptionPresent);
+            if (isPractoDescriptionPresent) {
+              document.practoDescription = await practo.getDescription();
+              // console.log("document.practoDescription", document.practoDescription);
+            }
+
+            const isPractoDrugContainsPresent = await practo.isDrugContainsPresent();
+            if (isPractoDrugContainsPresent) {
+              document.practoContainsText = await practo.getDrugContains();
+              // console.log(
+              //   "document.practoContainsText",
+              //   document.practoContainsText
+              // );
+            }
+
+            const isPractoDrugUsesPresent = await practo.isDrugUsesPresent();
+            if (isPractoDrugUsesPresent) {
+              document.drugUses = await practo.getDrugUses();
+              // console.log("document.drugUses", document.drugUses);
+              document.processPractoData();
+            }
+
+            // const practoReferenceUrl = await browser.getCurrentUrl();
+            // document.referenceUrls.push(practoReferenceUrl);
+          }
+        }
+      }
+
+      // * get medicine information from InformedHealth
+      if (document.drugUses[0]) {
+        informedHealth.goToPage();
+        const isInformedHealthLoaded = await informedHealth.isPageLoaded();
+        if (isInformedHealthLoaded) {
+          informedHealth.inputMedicineName(`${document.drugUses[0]} overview`);
+          const isInformedHealthResultsPresent = await informedHealth.isSearchResultsPresent();
+          if (isInformedHealthResultsPresent) {
+            informedHealth.clickFirstSearchResult();
+            const isInformedHealthDescriptionPresent = await informedHealth.isDescriptionPresent();
+            if (isInformedHealthDescriptionPresent) {
+              const headings = await informedHealth.getDescriptionHeadings();
+              document.informedHealthHeadings.push(headings);
+              // console.log(
+              //   "document.informedHealthHeadings",
+              //   document.informedHealthHeadings
+              // );
+              const contents = await informedHealth.getDescriptionContents();
+              document.informedHealthContents.push(contents);
+              // console.log(
+              //   "document.informedHealthContents",
+              //   document.informedHealthContents
+              // );
+              const informedHealthReferenceUrl = await browser.getCurrentUrl();
+              document.referenceUrls.push(informedHealthReferenceUrl);
+            } else {
+              document.informedHealthHeadings.push([null, null]);
+              document.informedHealthContents.push([null, null]);
+            }
+          }
+        }
+      }
+      if (document.drugUses[1]) {
+        informedHealth.goToPage();
+        const isInformedHealthLoaded = await informedHealth.isPageLoaded();
+        if (isInformedHealthLoaded) {
+          informedHealth.inputMedicineName(`${document.drugUses[1]} overview`);
+          const isInformedHealthResultsPresent = await informedHealth.isSearchResultsPresent();
+          if (isInformedHealthResultsPresent) {
+            informedHealth.clickFirstSearchResult();
+            const isInformedHealthDescriptionPresent = await informedHealth.isDescriptionPresent();
+            if (isInformedHealthDescriptionPresent) {
+              const headings = await informedHealth.getDescriptionHeadings();
+              document.informedHealthHeadings.push(headings);
+              // console.log(
+              //   "document.informedHealthHeadings",
+              //   document.informedHealthHeadings
+              // );
+              const contents = await informedHealth.getDescriptionContents();
+              document.informedHealthContents.push(contents);
+              // console.log(
+              //   "document.informedHealthContents",
+              //   document.informedHealthContents
+              // );
+              const informedHealthReferenceUrl = await browser.getCurrentUrl();
+              document.referenceUrls.push(informedHealthReferenceUrl);
+            } else {
+              document.informedHealthHeadings.push([null, null]);
+              document.informedHealthContents.push([null, null]);
+            }
+          }
+        }
+      }
+      if (document.drugUses[2]) {
+        informedHealth.goToPage();
+        const isInformedHealthLoaded = await informedHealth.isPageLoaded();
+        if (isInformedHealthLoaded) {
+          informedHealth.inputMedicineName(`${document.drugUses[2]} overview`);
+          const isInformedHealthResultsPresent = await informedHealth.isSearchResultsPresent();
+          if (isInformedHealthResultsPresent) {
+            informedHealth.clickFirstSearchResult();
+            const isInformedHealthDescriptionPresent = await informedHealth.isDescriptionPresent();
+            if (isInformedHealthDescriptionPresent) {
+              const headings = await informedHealth.getDescriptionHeadings();
+              document.informedHealthHeadings.push(headings);
+              // console.log(
+              //   "document.informedHealthHeadings",
+              //   document.informedHealthHeadings
+              // );
+              const contents = await informedHealth.getDescriptionContents();
+              document.informedHealthContents.push(contents);
+              // console.log(
+              //   "document.informedHealthContents",
+              //   document.informedHealthContents
+              // );
+              const informedHealthReferenceUrl = await browser.getCurrentUrl();
+              document.referenceUrls.push(informedHealthReferenceUrl);
+            } else {
+              document.informedHealthHeadings.push([null, null]);
+              document.informedHealthContents.push([null, null]);
+            }
+          }
+        }
+      }
+      document.processInformedHealthData();
+
+      // * get company description from Wikipedia
+      wikipedia.goToPage();
+      const isWikipediaLoaded = wikipedia.isPageLoaded();
+      if (isWikipediaLoaded) {
+        wikipedia.inputMedicineName(`${document.company} pharmaceutical`);
+        const isNoSearchResultsPresent = await wikipedia.isNoSearchResultsPresent();
+        if (!isNoSearchResultsPresent) {
+          const isSearchPagePresent = await wikipedia.isSearchPagePresent();
+          if (isSearchPagePresent) {
+            const isSearchResultsPresent = await wikipedia.isSearchResultsPresent();
+            if (isSearchResultsPresent) {
+              wikipedia.clickFirstSearchResult();
+              const isCompanyDescriptionPresent = await wikipedia.isDescriptionPresent();
+              if (isCompanyDescriptionPresent) {
+                const companyDescriptionList = await wikipedia.getCompanyDescription();
+                document.brandInfoDescription = companyDescriptionList[1].replace(
+                  / *\[[^\]]*]/g,
+                  ""
+                );
+                // console.log(
+                //   "document.brandInfoDescription",
+                //   document.brandInfoDescription
+                // );
+              }
+            }
+          } else {
+            const isCompanyDescriptionPresent = await wikipedia.isDescriptionPresent();
+            if (isCompanyDescriptionPresent) {
+              const companyDescriptionList = await wikipedia.getCompanyDescription();
+              document.brandInfoDescription = companyDescriptionList[1].replace(
+                / *\[[^\]]*]/g,
+                ""
+              );
+              // console.log(
+              //   "document.brandInfoDescription",
+              //   document.brandInfoDescription
+              // );
+            }
+          }
+        }
+      }
+
+      // * create the document
+      await document.createDocument();
+    });
   });
-}
+});

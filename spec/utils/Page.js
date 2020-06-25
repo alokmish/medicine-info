@@ -13,15 +13,17 @@ module.exports = class Page extends Element {
     this.checkPageURLExists();
     browser.manage().window().maximize();
     browser.get(this.pageURL);
-    this.waitUntilDisplayed();
   };
 
-  inputMedicineName = (medicine, addTabletKeyword) => {
+  isPageLoaded = () => {
+    return this.waitUntilPresent();
+  };
+
+  inputMedicineName = (medicine) => {
     this.waitUntilDisplayed();
     this.selector.clear();
     this.selector.click();
-    if (addTabletKeyword) this.selector.sendKeys(`${medicine} tablet`);
-    else this.selector.sendKeys(medicine);
+    this.selector.sendKeys(medicine);
     this.selector.sendKeys(protractor.Key.ENTER);
   };
 
