@@ -47,13 +47,14 @@ module.exports = class Practo extends Page {
   getDrugContains = async () => {
     const drugContainsSpan = new DrugContainsSpan();
     const drugContainsAnchor = new DrugContainsAnchor();
-    let spanText = "";
-    let anchorText = "";
-    if (await drugContainsSpan.waitUntilPresent())
-      spanText = await drugContainsSpan.getContainsSpanText();
-    if (await drugContainsAnchor.waitUntilPresent())
-      anchorText = await drugContainsAnchor.getContainsAnchorText();
-    return spanText + anchorText;
+    if (await drugContainsAnchor.waitUntilPresent()) {
+      const anchorText = await drugContainsAnchor.getContainsAnchorText();
+      return anchorText;
+    }
+    if (await drugContainsSpan.waitUntilPresent()) {
+      const spanText = await drugContainsSpan.getContainsSpanText();
+      return spanText;
+    }
   };
 
   isDrugUsesPresent = () => {

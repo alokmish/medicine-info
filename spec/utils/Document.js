@@ -214,7 +214,7 @@ module.exports = class Document {
     return [
       new docx.Paragraph({
         spacing: {
-          after: 200,
+          after: 150,
         },
         children: [
           new docx.TextRun({
@@ -223,6 +223,7 @@ module.exports = class Document {
             color: "7F7F80",
             size: 24,
             bold: true,
+            heading: docx.HeadingLevel.HEADING_4,
           }),
           new docx.TextRun({
             text: _.capitalize(this.medicine),
@@ -234,7 +235,7 @@ module.exports = class Document {
       }),
       new docx.Paragraph({
         spacing: {
-          after: 200,
+          after: 150,
         },
         children: [
           new docx.TextRun({
@@ -243,6 +244,7 @@ module.exports = class Document {
             color: "7F7F80",
             size: 24,
             bold: true,
+            heading: docx.HeadingLevel.HEADING_4,
           }),
           new docx.TextRun({
             text: this.getTextValueToUse(
@@ -258,15 +260,16 @@ module.exports = class Document {
       }),
       new docx.Paragraph({
         spacing: {
-          after: 200,
+          after: 150,
         },
         children: [
           new docx.TextRun({
             text: "Contains: ",
-            bold: true,
             font: "Calibri",
             color: "7F7F80",
             size: 24,
+            bold: true,
+            heading: docx.HeadingLevel.HEADING_4,
           }),
           new docx.TextRun({
             text: this.getTextValueToUse(
@@ -282,15 +285,16 @@ module.exports = class Document {
       }),
       new docx.Paragraph({
         spacing: {
-          after: 200,
+          after: 150,
         },
         children: [
           new docx.TextRun({
             text: "Category: ",
-            bold: true,
             font: "Calibri",
             color: "7F7F80",
             size: 24,
+            bold: true,
+            heading: docx.HeadingLevel.HEADING_4,
           }),
           new docx.TextRun({
             text: this.getTextValueToUse(
@@ -306,15 +310,16 @@ module.exports = class Document {
       }),
       new docx.Paragraph({
         spacing: {
-          after: 200,
+          after: 300,
         },
         children: [
           new docx.TextRun({
             text: "Uses: ",
-            bold: true,
             font: "Calibri",
             color: "7F7F80",
             size: 24,
+            bold: true,
+            heading: docx.HeadingLevel.HEADING_4,
           }),
           new docx.TextRun({
             text: this.getTextValueToUse(
@@ -335,21 +340,22 @@ module.exports = class Document {
     return [
       new docx.Paragraph({
         spacing: {
-          after: 200,
+          after: 150,
         },
         children: [
           new docx.TextRun({
             text: "Brand Info",
-            bold: true,
             font: "Calibri",
             color: "7F7F80",
             size: 24,
+            bold: true,
+            heading: docx.HeadingLevel.HEADING_4,
           }),
         ],
       }),
       new docx.Paragraph({
         spacing: {
-          after: 200,
+          after: 150,
         },
         children: [
           new docx.TextRun({
@@ -361,7 +367,14 @@ module.exports = class Document {
             font: "Calibri",
             color: "7F7F80",
             size: 20,
-          }).break(),
+          }),
+        ],
+      }),
+      new docx.Paragraph({
+        spacing: {
+          after: 150,
+        },
+        children: [
           new docx.TextRun({
             text: this.getTextValueToUse(
               this.drugsUpdateDocData.brandInfoText,
@@ -371,7 +384,14 @@ module.exports = class Document {
             font: "Calibri",
             color: "7F7F80",
             size: 20,
-          }).break(),
+          }),
+        ],
+      }),
+      new docx.Paragraph({
+        spacing: {
+          after: 300,
+        },
+        children: [
           new docx.TextRun({
             text: this.getTextValueToUse(
               this.brandInfoDescription,
@@ -381,7 +401,7 @@ module.exports = class Document {
             font: "Calibri",
             color: "7F7F80",
             size: 20,
-          }).break(),
+          }),
         ],
       }),
     ];
@@ -392,39 +412,48 @@ module.exports = class Document {
     if (!this.informedHealthDocData.isDataReady) return [];
     // Process paragraphs and return them
     const diseaseInfoParagraphs = [];
-    _.keys(this.informedHealthDocData.diseaseInfo).forEach((disease) => {
+    // console.log(
+    //   "this.informedHealthDocData.diseaseInfo",
+    //   this.informedHealthDocData.diseaseInfo
+    // );
+    if (_.keys(this.informedHealthDocData.diseaseInfo).length > 0)
       diseaseInfoParagraphs.push(
         new docx.Paragraph({
           spacing: {
-            after: 200,
+            after: 150,
           },
           children: [
             new docx.TextRun({
               text: "Disease Info",
-              bold: true,
               font: "Calibri",
               color: "7F7F80",
               size: 24,
+              bold: true,
+              heading: docx.HeadingLevel.HEADING_4,
             }),
           ],
-        }),
+        })
+      );
+    _.keys(this.informedHealthDocData.diseaseInfo).forEach((disease) => {
+      diseaseInfoParagraphs.push(
         new docx.Paragraph({
           spacing: {
-            after: 200,
+            after: 150,
           },
           children: [
             new docx.TextRun({
               text: disease,
-              bold: true,
               font: "Calibri",
               color: "7F7F80",
               size: 24,
+              bold: true,
+              heading: docx.HeadingLevel.HEADING_4,
             }),
           ],
         }),
         new docx.Paragraph({
           spacing: {
-            after: 200,
+            after: 150,
           },
           children: [
             new docx.TextRun({
@@ -437,7 +466,7 @@ module.exports = class Document {
         }),
         new docx.Paragraph({
           spacing: {
-            after: 200,
+            after: 300,
           },
           children: [
             new docx.TextRun({
@@ -456,30 +485,32 @@ module.exports = class Document {
   getDetailedInfoParagraphs = () => {
     let detailedInfoParagraphs = [];
     for (let i = 0; i < Constants.mimsOrderedHeadings.length; i++) {
+      detailedInfoParagraphs.push(
+        new docx.Paragraph({
+          // ! Commenting this as a new line is added, not sure why
+          // spacing: {
+          //   after: 150,
+          // },
+          children: [
+            new docx.TextRun({
+              text: Constants.mimsOrderedHeadings[i],
+              font: "Calibri",
+              color: "7F7F80",
+              size: 24,
+              bold: true,
+              heading: docx.HeadingLevel.HEADING_4,
+            }),
+          ],
+        })
+      );
       const index = this.mimsHeadings.indexOf(Constants.mimsOrderedHeadings[i]);
       if (index !== -1) {
-        detailedInfoParagraphs.push(
-          new docx.Paragraph({
-            spacing: {
-              after: 200,
-            },
-            children: [
-              new docx.TextRun({
-                text: Constants.mimsOrderedHeadings[i],
-                bold: true,
-                font: "Calibri",
-                color: "7F7F80",
-                size: 24,
-              }),
-            ],
-          })
-        );
         const textRunArray = [];
         const splitValues = this.mimsContents[index].split("\n");
         splitValues.forEach((textVal) => {
           textRunArray.push(
             new docx.TextRun({
-              text: textVal,
+              text: textVal.replace(/w\//g, "with"),
               font: "Calibri",
               color: "7F7F80",
               size: 20,
@@ -489,7 +520,7 @@ module.exports = class Document {
         detailedInfoParagraphs.push(
           new docx.Paragraph({
             spacing: {
-              after: 200,
+              after: 300,
             },
             children: textRunArray,
           })
@@ -498,21 +529,7 @@ module.exports = class Document {
         detailedInfoParagraphs.push(
           new docx.Paragraph({
             spacing: {
-              after: 200,
-            },
-            children: [
-              new docx.TextRun({
-                text: Constants.mimsOrderedHeadings[i],
-                bold: true,
-                font: "Calibri",
-                color: "7F7F80",
-                size: 24,
-              }),
-            ],
-          }),
-          new docx.Paragraph({
-            spacing: {
-              after: 200,
+              after: 300,
             },
             children: [
               new docx.TextRun({
@@ -535,15 +552,16 @@ module.exports = class Document {
     let referencesInfoParagraphs = [
       new docx.Paragraph({
         spacing: {
-          after: 200,
+          after: 150,
         },
         children: [
           new docx.TextRun({
             text: "References",
-            bold: true,
             font: "Calibri",
             color: "7F7F80",
             size: 24,
+            bold: true,
+            heading: docx.HeadingLevel.HEADING_4,
           }),
         ],
       }),
@@ -552,7 +570,7 @@ module.exports = class Document {
       referencesInfoParagraphs.push(
         new docx.Paragraph({
           spacing: {
-            after: 200,
+            after: 150,
           },
           children: [
             new docx.TextRun({

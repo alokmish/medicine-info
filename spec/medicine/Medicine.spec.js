@@ -31,15 +31,13 @@ describe("medicine information", () => {
   //   browser.sleep(2000);
   // });
 
-  // using(fileReader.loadCSV("medicines.csv"), function (drug) {
-  using(["pipzo"], function (drug) {
+  using(fileReader.loadCSV("medicines.csv"), function (drug) {
     it(`should create a document for ${drug}`, async () => {
       // * set up the document
       const document = new Document();
       const index = fileReader.medicines.indexOf(drug);
       document.company = fileReader.companies[index];
       document.medicine = drug;
-      document.company = "sun";
 
       // * return if medicine or company is not defined
       if (!document.medicine) return;
@@ -135,10 +133,10 @@ describe("medicine information", () => {
             const isPractoDrugContainsPresent = await practo.isDrugContainsPresent();
             if (isPractoDrugContainsPresent) {
               document.practoContainsText = await practo.getDrugContains();
-              console.log(
-                "document.practoContainsText",
-                document.practoContainsText
-              );
+              // console.log(
+              //   "document.practoContainsText",
+              //   document.practoContainsText
+              // );
             }
 
             const isPractoDrugUsesPresent = await practo.isDrugUsesPresent();
@@ -148,8 +146,8 @@ describe("medicine information", () => {
               document.processPractoData();
             }
 
-            const practoReferenceUrl = await browser.getCurrentUrl();
-            document.referenceUrls.push(practoReferenceUrl);
+            // const practoReferenceUrl = await browser.getCurrentUrl();
+            // document.referenceUrls.push(practoReferenceUrl);
           }
         }
       }
@@ -257,17 +255,37 @@ describe("medicine information", () => {
         wikipedia.inputMedicineName(`${document.company} pharmaceutical`);
         const isNoSearchResultsPresent = await wikipedia.isNoSearchResultsPresent();
         if (!isNoSearchResultsPresent) {
-          const isCompanyDescriptionPresent = await wikipedia.isDescriptionPresent();
-          if (isCompanyDescriptionPresent) {
-            const companyDescriptionList = await wikipedia.getCompanyDescription();
-            document.brandInfoDescription = companyDescriptionList[1].replace(
-              / *\[[^\]]*]/g,
-              ""
-            );
-            // console.log(
-            //   "document.brandInfoDescription",
-            //   document.brandInfoDescription
-            // );
+          const isSearchPagePresent = await wikipedia.isSearchPagePresent();
+          if (isSearchPagePresent) {
+            const isSearchResultsPresent = await wikipedia.isSearchResultsPresent();
+            if (isSearchResultsPresent) {
+              wikipedia.clickFirstSearchResult();
+              const isCompanyDescriptionPresent = await wikipedia.isDescriptionPresent();
+              if (isCompanyDescriptionPresent) {
+                const companyDescriptionList = await wikipedia.getCompanyDescription();
+                document.brandInfoDescription = companyDescriptionList[1].replace(
+                  / *\[[^\]]*]/g,
+                  ""
+                );
+                // console.log(
+                //   "document.brandInfoDescription",
+                //   document.brandInfoDescription
+                // );
+              }
+            }
+          } else {
+            const isCompanyDescriptionPresent = await wikipedia.isDescriptionPresent();
+            if (isCompanyDescriptionPresent) {
+              const companyDescriptionList = await wikipedia.getCompanyDescription();
+              document.brandInfoDescription = companyDescriptionList[1].replace(
+                / *\[[^\]]*]/g,
+                ""
+              );
+              // console.log(
+              //   "document.brandInfoDescription",
+              //   document.brandInfoDescription
+              // );
+            }
           }
         }
       }

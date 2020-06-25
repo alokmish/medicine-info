@@ -13,6 +13,21 @@ module.exports = class Wikipedia extends Page {
     return noSearchResults.waitUntilPresent();
   };
 
+  isSearchPagePresent = () => {
+    const searchPage = new SearchPage();
+    return searchPage.waitUntilPresent();
+  };
+
+  isSearchResultsPresent = () => {
+    const searchResults = new SearchResults();
+    return searchResults.waitUntilPresent();
+  };
+
+  clickFirstSearchResult = () => {
+    const searchResults = new SearchResults();
+    searchResults.clickFirstSearchResult();
+  };
+
   isDescriptionPresent = () => {
     const descriptions = new Description();
     return descriptions.waitUntilPresent();
@@ -26,6 +41,18 @@ module.exports = class Wikipedia extends Page {
 
 class NoSearchResults extends Element {
   selector = $(".mw-search-nonefound");
+}
+
+class SearchPage extends Element {
+  selector = $("button.oo-ui-inputWidget-input.oo-ui-buttonElement-button");
+}
+
+class SearchResults extends Element {
+  selector = element.all(by.css(".mw-search-result-heading")).first();
+
+  clickFirstSearchResult = () => {
+    this.selector.all(by.tagName("a")).click();
+  };
 }
 
 class Description extends Element {

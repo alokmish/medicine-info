@@ -1,6 +1,6 @@
 module.exports = class Element {
   selector = undefined;
-  waitUntilDisplayedTimeout = 5000;
+  waitTime = 8000;
 
   constructor(selector = undefined) {
     this.selector = selector;
@@ -26,7 +26,7 @@ module.exports = class Element {
 
     browser.wait(
       () => this.isDisplayed(),
-      this.waitUntilDisplayedTimeout,
+      this.waitTime,
       `Failed while waiting for "${this.selector.locator()}" of Page Object Class '${
         this.constructor.name
       }' to display.`
@@ -37,7 +37,7 @@ module.exports = class Element {
     this.checkSelectorExist();
     const promise = new Promise((resolve) => {
       browser
-        .wait(() => this.isDisplayed(), this.waitUntilDisplayedTimeout)
+        .wait(() => this.isDisplayed(), this.waitTime)
         .then(
           () => {
             // return true if element is present after timeout
